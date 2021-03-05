@@ -5,4 +5,4 @@ outputs:
     description: 'Committed version or existing version'
 runs:
   using: 'docker'
-  image: 'ghcr.io/hass-emulated-hue/update-swversion:amd64-latest'
+  image: 'docker://ghcr.io/hass-emulated-hue/update-swversion:amd64-latest'
