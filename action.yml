@@ -1,7 +1,7 @@
 name: 'update-swversion'
 description: 'Updates swversion in repository'
 outputs:
-  version: # id of output
+  version:
     description: 'Committed version or existing version'
 runs:
   using: 'docker'
