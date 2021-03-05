@@ -1,5 +1,8 @@
 name: 'update-swversion'
 description: 'Updates swversion in repository'
+outputs:
+  version: # id of output
+    description: 'Committed version or existing version'
 runs:
   using: 'docker'
   image: 'ghcr.io/hass-emulated-hue/update-swversion:amd64-latest'

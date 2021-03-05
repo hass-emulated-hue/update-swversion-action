@@ -79,3 +79,4 @@ if current_version != latest_version:
     save_json(DEFINITIONS_FILE, definitions, False)
 else:
     LOGGER.info(f"Current version is equal to latest version. Exiting...")
+os.system(f'echo ::set-output name=version::{latest_version}')
