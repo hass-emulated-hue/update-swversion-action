@@ -1,6 +1,7 @@
 import json
 import logging
-from os import replace
+import os
+import shutil
 from tempfile import mkstemp
 
 LOGGER = logging.getLogger(__name__)
@@ -29,7 +30,8 @@ def save_version_in_file(filename: str, current_version: str, new_version: str) 
                     else:
                         new_line = line
                     temp_file.write(new_line)
-        replace(temp_path, filename)
+        shutil.copy(temp_path, filename)
+        os.remove(temp_path)
     except IOError:
         LOGGER.exception("Failed replacing version number: %s", filename)
         exit(1)
