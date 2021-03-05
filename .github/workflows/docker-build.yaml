@@ -1,0 +1,147 @@
+name: Docker Build
+
+on:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Build Docker Image
+    strategy:
+      matrix:
+        include:
+          - arch: linux/amd64
+            arch_friendly: amd64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+        with:
+          install: true
+
+      - name: Build
+        run: |
+          set -x
+          docker build \
+            --tag baseimage:ci \
+            --platform ${{ matrix.arch }} \
+            --progress plain \
+            --file ./Dockerfile \
+            --load \
+            .
+
+      - name: Inspect
+        run: |
+          docker image inspect baseimage:ci
+
+      - name: Save tarball
+        run: |
+          docker save --output output.tar baseimage:ci
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: ci-${{ matrix.arch_friendly }}-${{ github.run_number }}.tar
+          path: output.tar
+
+  publish:
+    needs: build
+    name: Publish Image
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [ amd64 ]
+        registry:
+          - {
+            url: "https://index.docker.io/v1/",
+            username: DOCKER_USERNAME,
+            password: DOCKER_PASSWORD,
+            repo: hassemulatedhue/update-swversion
+          }
+          - {
+            url: ghcr.io/hass-emulated-hue,
+            username: GCHR_USERNAME,
+            password: GHCR_PAT,
+            repo: ghcr.io/hass-emulated-hue/update-swversion
+          }
+    steps:
+      - name: Download container artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: ci-${{ matrix.arch }}-${{ github.run_number }}.tar
+
+      - name: Import image
+        run: |
+          docker load --input output.tar
+
+      - name: Docker login
+        run: |
+          docker login ${{ matrix.registry.url }} -u ${{ secrets[matrix.registry.username] }} -p ${{ secrets[matrix.registry.password] }}
+
+      # arch-run_num
+      - name: Deploy Run Number (arch-run_num)
+        run: |
+          set -x
+          docker tag baseimage:ci ${{ matrix.registry.repo }}:${{ matrix.arch }}-${{ github.run_number }}
+          docker push ${{ matrix.registry.repo }}:${{ matrix.arch }}-${{ github.run_number }}
+          echo ${{ matrix.registry.repo }}:${{ matrix.arch }}-${{ github.run_number }} published
+
+      # arch-branch-sha
+      - name: Deploy Commit Hash (arch-branch-sha)
+        if: ${{ github.sha != '' }}
+        run: |
+          set -x
+          docker tag baseimage:ci ${{ matrix.registry.repo }}:${{ matrix.arch }}-${GITHUB_REF##*/}-$GITHUB_SHA
+          docker push ${{ matrix.registry.repo }}:${{ matrix.arch }}-${GITHUB_REF##*/}-$GITHUB_SHA
+          echo ${{ matrix.registry.repo }}:${{ matrix.arch }}-${GITHUB_REF##*/}-$GITHUB_SHA published
+
+      # latest
+      - name: Deploy Latest (latest)
+        if: ${{ github.ref == 'refs/heads/master' }}
+        run: |
+          set -x
+          docker tag baseimage:ci ${{ matrix.registry.repo }}:${{ matrix.arch }}-latest
+          docker push ${{ matrix.registry.repo }}:${{ matrix.arch }}-latest
+          echo ${{ matrix.registry.repo }}:${{ matrix.arch }}-latest published
+
+      # arch-branch
+      - name: Deploy Branch (arch-branch)
+        if: ${{ startsWith(github.ref, 'refs/heads/') }}
+        run: |
+          set -x
+          docker tag baseimage:ci ${{ matrix.registry.repo }}:${{ matrix.arch }}-${GITHUB_REF##*/}
+          docker push ${{ matrix.registry.repo }}:${{ matrix.arch }}-${GITHUB_REF##*/}
+          echo ${{ matrix.registry.repo }}:${{ matrix.arch }}-${GITHUB_REF##*/} published
+
+      # arch-branch-run_num
+      - name: Deploy Branch and Run Number (arch-branch-run_num)
+        if: ${{ startsWith(github.ref, 'refs/heads/') }}
+        run: |
+          set -x
+          docker tag baseimage:ci ${{ matrix.registry.repo }}:${{ matrix.arch }}-${GITHUB_REF##*/}-${{ github.run_number }}
+          docker push ${{ matrix.registry.repo }}:${{ matrix.arch }}-${GITHUB_REF##*/}-${{ github.run_number }}
+          echo ${{ matrix.registry.repo }}:${{ matrix.arch }}-${GITHUB_REF##*/}-${{ github.run_number }} published
+
+      # arch-tag
+      - name: Deploy Tag (arch-tag)
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          set -x
+          docker tag baseimage:ci ${{ matrix.registry.repo }}:${{ matrix.arch }}-${GITHUB_REF##*/}
+          docker push ${{ matrix.registry.repo }}:${{ matrix.arch }}-${GITHUB_REF##*/}
+          echo ${{ matrix.registry.repo }}:${{ matrix.arch }}-${GITHUB_REF##*/} published
+
+      # arch-branch-run_num
+      - name: Deploy Tag and Run Number (arch-branch-run_num)
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          set -x
+          docker tag baseimage:ci ${{ matrix.registry.repo }}:${{ matrix.arch }}-${GITHUB_REF##*/}-${{ github.run_number }}
+          docker push ${{ matrix.registry.repo }}:${{ matrix.arch }}-${GITHUB_REF##*/}-${{ github.run_number }}
+          echo ${{ matrix.registry.repo }}:${{ matrix.arch }}-${GITHUB_REF##*/}-${{ github.run_number }} published

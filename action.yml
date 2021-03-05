@@ -1,0 +1,5 @@
+name: 'update-swversion'
+description: 'Updates swversion in repository'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
