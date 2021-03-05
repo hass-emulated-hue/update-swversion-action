@@ -1,6 +1,7 @@
-import os
 import json
 import logging
+from os import replace
+from tempfile import mkstemp
 
 LOGGER = logging.getLogger(__name__)
 
@@ -9,24 +10,29 @@ def load_json(filename: str) -> dict:
     """Load JSON from file."""
     try:
         with open(filename, encoding="utf-8") as fdesc:
-            return json.loads(fdesc.read())  # type: ignore
+            return json.loads(fdesc.read())
     except (FileNotFoundError, ValueError, OSError) as error:
-        LOGGER.debug("Loading %s failed: %s", filename, error)
-        return {}
+        LOGGER.exception("Loading %s failed: %s", filename, error)
+        exit(1)
 
 
-def save_json(filename: str, data: dict, backup: bool = True):
-    """Save JSON data to a file."""
-    if backup:
-        safe_copy = filename + ".backup"
-        if os.path.isfile(filename):
-            os.replace(filename, safe_copy)
+def save_version_in_file(filename: str, current_version: str, new_version: str) -> None:
+    """Search and replace value in file."""
+    # This works by creating a temporary file, reading and replacing the
     try:
-        json_data = json.dumps(data, sort_keys=False, indent=2, ensure_ascii=False)
-        with open(filename, "w") as file_obj:
-            file_obj.write(json_data)
+        fd, temp_path = mkstemp()
+        with open(fd, 'w') as temp_file:
+            with open(filename) as old_file:
+                for line in old_file:
+                    if current_version in line and '"swversion": "' in line:
+                        new_line = line.replace(current_version, new_version)
+                    else:
+                        new_line = line
+                    temp_file.write(new_line)
+        replace(temp_path, filename)
     except IOError:
-        LOGGER.exception("Failed to serialize to JSON: %s", filename)
+        LOGGER.exception("Failed replacing version number: %s", filename)
+        exit(1)
 
 
 def test_cast_int(potential_int: str) -> bool:

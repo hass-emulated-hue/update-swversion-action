@@ -7,7 +7,7 @@ from typing import Optional
 
 import requests
 
-from utils import load_json, save_json, test_cast_int
+from utils import load_json, save_version_in_file, test_cast_int
 
 logger = logging.getLogger()
 logformat = logging.Formatter("%(asctime)-15s %(levelname)-5s %(name)s -- %(message)s")
@@ -72,7 +72,7 @@ if current_version != latest_version:
         f"Current version is not equal to latest version! Writing latest version: {latest_version}"
     )
     definitions["bridge"]["basic"]["swversion"] = latest_version
-    save_json(DEFINITIONS_FILE, definitions, False)
+    save_version_in_file(DEFINITIONS_FILE, current_version, latest_version)
 else:
     LOGGER.info(f"Current version is equal to latest version. Exiting...")
 os.system(f'echo ::set-output name=version::{latest_version}')
