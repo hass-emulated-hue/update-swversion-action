@@ -42,7 +42,6 @@ def test_cast_int(potential_int: str) -> bool:
     # Attempt to cast to int to ensure we have a version number
     # Return string since some versions begin with 0
     try:
-        int(potential_int)
-        return True
+        return float(potential_int) == int(potential_int)
     except ValueError:
         return False

@@ -17,27 +17,27 @@ logger.addHandler(consolehandler)
 logger.setLevel(logging.INFO)
 LOGGER = logging.getLogger("Updater")
 
-get_match_string = lambda match_result: ''.join(match_result.groups())
+get_match_string = lambda match_result: ''.join(item for item in match_result.groups() if item)
 
 
 def extract_version(line) -> Optional[str]:
     """Parse line from webpage and return version number."""
     # Check to see if match the standard firmware version 1/2
-    match = re.search("(firmware)(.*)([0-9]+)(.*)(v2)(.*)([0-9]*)", line)
+    match = re.search(r"(firmware|update)(.{0,3}?)([0-9.]+)(.*?)(v2)(.*?)([0-9.]*)", line)
     if match:
         partial = get_match_string(match)
         # Looks like (characters)v2(characters)(version)
-        format_1 = re.search(r"(v2)(.*?)([0-9]+)", partial)
+        format_1 = re.search(r"(v2)(.{0,3}?)([0-9.]+)", partial)
         if format_1:
             version_str = format_1.group(3)
         else:
             # Looks like (version)(characters)(v2)
-            format_2 = re.search(r"([0-9]+)(.*?)(v2)", partial)
+            format_2 = re.search(r"([0-9.]+)(.*?)(v2)", partial)
             version_str = format_2.group(1)
         return version_str if test_cast_int(version_str) else None
     else:
         # Check if matches firmware (int) without v1
-        match = re.search("(firmware)(.*?)([0-9]+)", line)
+        match = re.search(r"(firmware)(.{0,3}?)([0-9.]+)", line)
         v1_match = re.search("(v1)", line)
         if not v1_match and match:
             version_str = match.group(3)
@@ -51,7 +51,7 @@ def get_latest_version() -> str:
     webpage_lines = []
     for x in response.content.decode("utf-8").splitlines():
         if x:
-            webpage_lines.append(re.sub(r"[^A-Za-z0-9 ]+", "", x.lower()))
+            webpage_lines.append(re.sub(r"[^A-Za-z0-9 .]+", "", x.lower()))
     versions = list(filter(None, map(extract_version, webpage_lines)))
     # assume versions are in listed in order from newest to oldest. Next best alternative to saving all dates
     return versions[0]
